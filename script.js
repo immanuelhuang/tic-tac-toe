@@ -1,13 +1,13 @@
-const gameBoard = (() => {
-  const X = -1;
-  const O = 1;
-  const _ = 0;
+const X = -1;
+const O = 1;
+const _ = 0;
 
+const game = (() => {
   const boardState = [ _ , _ , _ , _ , _ , _ , _ , _ , _ ];
   let playerTurn = _;
 
-  const getBoardState = () => {boardState};
-  const getPlayerTurn = () => {playerTurn};
+  const getBoardState = () => boardState;
+  const getPlayerTurn = () => playerTurn;
 
   const printBoard = () => {
     console.log("It's player " + playerTurn +  "'s turn.");
@@ -16,9 +16,28 @@ const gameBoard = (() => {
                 boardState[6] + " " + boardState[7] + " " + boardState[8])
   }
 
+  const renderBoard = () => {
+    const gameContainer = document.querySelector("#game-container");
+    gameContainer.innerHTML = "";
+    const board = game.getBoardState();
+    for (let i = 0; i < 9; i++) {
+      const button = document.createElement("button");
+      button.value = i;
+      if (board[i] === X) {
+        button.style["background-color"] = "red";
+        button.disabled = true;
+      } else if (board[i] === O) {
+        button.style["background-color"] = "blue";
+        button.disabled = true;
+      }
+      gameContainer.appendChild(button);
+    }
+  }
+
   const startGame = () => {
     for (let i = 0; i < boardState.length; i++) boardState[i] = _;
     playerTurn = Math.floor(Math.random() * 2) === 0 ? X : O;
+    renderBoard();
   };
 
   const checkWin = (space) => {
@@ -57,9 +76,27 @@ const gameBoard = (() => {
   const makeMove = (space) => {
     if (playerTurn === X) boardState[space] = X;
     else boardState[space] = O;
-    printBoard();
+    renderBoard();
     return checkWin(space);
   }
 
-  return {getBoardState, getPlayerTurn, startGame, makeMove, printBoard};
+  return {
+    renderBoard,
+    getBoardState,
+    getPlayerTurn,
+    startGame,
+    makeMove,
+    printBoard
+  };
 })();
+
+document.querySelector("#game-container").addEventListener("click", (e) => {
+  if (e.target.hasAttribute("value")) {
+    if (game.makeMove(e.target.value).winner !== undefined) {
+      // insert overlay for play again
+      console.log("GAME DONE");
+    }
+  }
+});
+
+game.startGame();
