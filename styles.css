@@ -1,11 +1,30 @@
 body, html {
   height: 100%;
+  width: 100%;
+}
+
+main {
+  display: flex;
+  height: 50%;
 }
 
 #game-container {
   display: grid;
-  height: 50%;
   width: 50%;
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr 1fr;
+}
+
+#player1-container {
+  width: 25%;
+  background-color: red;
+}
+
+#player2-container {
+  width: 25%;
+  background-color: blue;
+}
+
+.no-color {
+  background-color: grey !important;
 }

@@ -2,31 +2,48 @@ const X = -1;
 const O = 1;
 const _ = 0;
 
-const game = (() => {
-  const boardState = [ _ , _ , _ , _ , _ , _ , _ , _ , _ ];
-  let playerTurn = _;
+const playerFactory = (name, isAI, counter, isTurn) => {
+  this.isTurn = isTurn;
 
-  const getBoardState = () => boardState;
-  const getPlayerTurn = () => playerTurn;
+  const renderPlayer = () => {
+    const playerDiv = counter === X
+        ? document.querySelector("#player1-container")
+        : document.querySelector("#player2-container");
+    playerDiv.querySelector("h2").innerHTML = name;
+    if (!isTurn) {
+      playerDiv.classList.add("no-color");
+    }
+    else {
+      playerDiv.classList.remove("no-color");
+    }
+  }
+
+  const switchTurn = () => {isTurn = !isTurn};
+
+  return {renderPlayer, switchTurn};
+}
+
+const board = (() => {
+  const state = [ _ , _ , _ , _ , _ , _ , _ , _ , _ ];
+
+  const getState = () => state;
 
   const printBoard = () => {
-    console.log("It's player " + playerTurn +  "'s turn.");
-    console.log(boardState[0] + " " + boardState[1] + " " + boardState[2] + "\n" +
-                boardState[3] + " " + boardState[4] + " " + boardState[5] + "\n" +
-                boardState[6] + " " + boardState[7] + " " + boardState[8])
+    console.log(state[0] + " " + state[1] + " " + state[2] + "\n" +
+                state[3] + " " + state[4] + " " + state[5] + "\n" +
+                state[6] + " " + state[7] + " " + state[8])
   }
 
   const renderBoard = () => {
     const gameContainer = document.querySelector("#game-container");
     gameContainer.innerHTML = "";
-    const board = game.getBoardState();
     for (let i = 0; i < 9; i++) {
       const button = document.createElement("button");
       button.value = i;
-      if (board[i] === X) {
+      if (state[i] === X) {
         button.style["background-color"] = "red";
         button.disabled = true;
-      } else if (board[i] === O) {
+      } else if (state[i] === O) {
         button.style["background-color"] = "blue";
         button.disabled = true;
       }
@@ -34,22 +51,43 @@ const game = (() => {
     }
   }
 
-  const startGame = () => {
-    for (let i = 0; i < boardState.length; i++) boardState[i] = _;
+  return {
+    getState,
+    renderBoard,
+  };
+})();
+
+const game = (() => {
+  const state = board.getState();
+
+  let playerTurn = _;
+  let player1, player2;
+
+  const start = (p1, p2) => {
+    for (let i = 0; i < state.length; i++) state[i] = _;
     playerTurn = Math.floor(Math.random() * 2) === 0 ? X : O;
-    renderBoard();
+    player1 = playerFactory(p1.name, p1.isAI, p1.counter, playerTurn === X);
+    player2 = playerFactory(p2.name, p2.isAI, p2.counter, playerTurn === O);
+    renderPlayers();
+    board.renderBoard();
   };
 
-  const checkWin = (space) => {
+  const makeMove = (space) => {
+    if (playerTurn === X) state[space] = X;
+    else state[space] = O;
+    board.renderBoard();
+    return checkResult(space);
+  }
+
+  function checkResult(space) {
     const row = Math.floor(space / 3) * 3;
     const col = space % 3;
 
-    let rowSum = boardState[row] + boardState[row + 1] + boardState[row + 2];
-    let colSum = boardState[col] + boardState[col + 3] + boardState[col + 6];
-    let diagSum = boardState[0] + boardState[4] + boardState[8];
-    let antiDiagSum = boardState[2] + boardState[4] + boardState[6];
+    let rowSum = state[row] + state[row + 1] + state[row + 2];
+    let colSum = state[col] + state[col + 3] + state[col + 6];
+    let diagSum = state[0] + state[4] + state[8];
+    let antiDiagSum = state[2] + state[4] + state[6];
 
-    // console.table({rowSum, colSum, diagSum, antiDiagSum});
     if (rowSum === 3 || colSum === 3 || diagSum === 3 || antiDiagSum === 3) {
       return {
         winner: X,
@@ -67,26 +105,27 @@ const game = (() => {
         antiDiag: antiDiagSum === -3,
       }
     } else {
-      if (!boardState.includes(_)) return {winner: _};
+      if (!state.includes(_)) return {winner: _};
       playerTurn = playerTurn === X ? O : X;
+      switchTurns();
+      renderPlayers();
       return {winner: undefined};
     }
   }
 
-  const makeMove = (space) => {
-    if (playerTurn === X) boardState[space] = X;
-    else boardState[space] = O;
-    renderBoard();
-    return checkWin(space);
+  function renderPlayers() {
+    player1.renderPlayer();
+    player2.renderPlayer();
+  }
+
+  function switchTurns() {
+    player1.switchTurn();
+    player2.switchTurn();
   }
 
   return {
-    renderBoard,
-    getBoardState,
-    getPlayerTurn,
-    startGame,
+    start,
     makeMove,
-    printBoard
   };
 })();
 
@@ -99,4 +138,7 @@ document.querySelector("#game-container").addEventListener("click", (e) => {
   }
 });
 
-game.startGame();
+game.start(
+  {name:"Immanuel", isAI:false, counter:X},
+  {name:"AI", isAI:true, counter:O}
+);
