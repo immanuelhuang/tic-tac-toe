@@ -8,18 +8,43 @@
 </head>
 <body>
   <div id="overlay"></div>
+  <div id="entry">
+    <div id="entry-top">
+      <h1>Welcome to tic-tac-toe!</h1>
+    </div>
+    <div id="options-container">
+      <div id="names-container">
+        <form>
+          <label for="player1-name">Player 1 Name</label><br>
+          <input id="player1-name" type="text" name="player1-name"><br>
+          <label for="player2-name">Player 2 Name</label><br>
+          <input id="player2-name" type="text" name="player2-name">
+        </form>
+      </div>
+      <div id="mode-container">
+        <button value=0 class="btn">vs. Player</button>
+        <button value=1 class="btn">vs. AI (Easy)</button>
+        <button value=2 class="btn">vs. AI (Hard)</button>
+      </div>
+    </div>
+    <div id="start-container">
+      <button disabled class="btn">Start Game</button>
+    </div>
+  </div>
   <header>
-    <h1></h1>
+    <h1>Tic-Tac-Toe</h1>
   </header>
   <main>
-    <div id="player1-container">
+    <div id="player1-container" class="player-container">
       <h2>Player 1 Name Goes Here</h2>
+      <img src="robot.png" alt="">
     </div>
     <div id="game-container">
 
     </div>
-    <div id="player2-container">
+    <div id="player2-container" class="player-container">
       <h2>Player 2 Name Goes Here</h2>
+      <img src="robot.png" alt="">
     </div>
   </main>
   <script src="script.js"></script>

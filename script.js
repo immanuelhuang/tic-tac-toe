@@ -1,6 +1,12 @@
+const cssVars = getComputedStyle(document.documentElement);
+
 const X = -1;
 const O = 1;
 const _ = 0;
+
+const PvP = 0;
+const PvAI = 1;
+const PvAIH = 2;
 
 const playerFactory = (name, isAI, counter, isTurn) => {
   this.isTurn = isTurn;
@@ -9,12 +15,16 @@ const playerFactory = (name, isAI, counter, isTurn) => {
     const playerDiv = counter === X
         ? document.querySelector("#player1-container")
         : document.querySelector("#player2-container");
-    playerDiv.querySelector("h2").innerHTML = name;
+    if (isAI) {
+      playerDiv.querySelector("h2").innerHTML = "AI";
+    } else {
+      playerDiv.querySelector("h2").innerHTML = name === "" ? "Player" : name;
+    }
     if (!isTurn) {
-      playerDiv.classList.add("no-color");
+      playerDiv.classList.add("not-turn");
     }
     else {
-      playerDiv.classList.remove("no-color");
+      playerDiv.classList.remove("not-turn");
     }
   }
 
@@ -28,24 +38,24 @@ const board = (() => {
 
   const getState = () => state;
 
-  const printBoard = () => {
-    console.log(state[0] + " " + state[1] + " " + state[2] + "\n" +
-                state[3] + " " + state[4] + " " + state[5] + "\n" +
-                state[6] + " " + state[7] + " " + state[8])
-  }
-
   const renderBoard = () => {
     const gameContainer = document.querySelector("#game-container");
     gameContainer.innerHTML = "";
     for (let i = 0; i < 9; i++) {
       const button = document.createElement("button");
       button.value = i;
+      if (0 <= i && i <= 2) button.classList.add("top-button");
+      if (6 <= i && i <= 8) button.classList.add("bottom-button");
+      if (i % 3 === 0) button.classList.add("left-button");
+      if (i % 3 === 2) button.classList.add("right-button");
       if (state[i] === X) {
-        button.style["background-color"] = "red";
+        button.classList.add("X-button");
         button.disabled = true;
       } else if (state[i] === O) {
-        button.style["background-color"] = "blue";
+        button.classList.add("O-button");
         button.disabled = true;
+      } else {
+        button.classList.add("_-button");
       }
       gameContainer.appendChild(button);
     }
@@ -62,6 +72,8 @@ const game = (() => {
 
   let playerTurn = _;
   let player1, player2;
+
+  let mode;
 
   const start = (p1, p2) => {
     for (let i = 0; i < state.length; i++) state[i] = _;
@@ -126,19 +138,48 @@ const game = (() => {
   return {
     start,
     makeMove,
+    mode,
+    player1,
   };
 })();
 
 document.querySelector("#game-container").addEventListener("click", (e) => {
   if (e.target.hasAttribute("value")) {
     if (game.makeMove(e.target.value).winner !== undefined) {
-      // insert overlay for play again
-      console.log("GAME DONE");
+      document.querySelector("#overlay").style.display = "block";
     }
   }
 });
 
-game.start(
-  {name:"Immanuel", isAI:false, counter:X},
-  {name:"AI", isAI:true, counter:O}
-);
+document.querySelector("#mode-container").addEventListener("click", (e) => {
+  if (e.target.classList.contains("btn")) {
+    document.querySelectorAll(".btn").forEach(button => {
+      button.classList.remove("btn-clicked");
+    });
+    document.querySelector("#start-container button").disabled = false;
+    e.target.classList.add("btn-clicked");
+    game.mode = e.target.value;
+    if (e.target.value != PvP) {
+      document.querySelector("#player2-name").disabled = true;
+    } else {
+      document.querySelector("#player2-name").disabled = false;
+    }
+  } else {
+    document.querySelector("#start-container button").disabled = true;
+  }
+});
+
+document.querySelector("#start-container").addEventListener("click", (e) => {
+  if (e.target.classList.contains("btn")) {
+    document.querySelector("#entry").style.display = "none";
+    game.start(
+      {name: document.querySelector("#player1-name").value, isAI:false, counter:X},
+      {name: document.querySelector("#player1-name").value, isAI: game.mode !== PvP, counter:O}
+    );
+  }
+});
+
+document.querySelector("#overlay").addEventListener("click", (e) => {
+  e.target.style.display = "none";
+  document.querySelector("#entry").style.display = "block";
+});
