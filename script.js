@@ -10,7 +10,7 @@ const playerFactory = (name, isAI, counter, isTurn) => {
   this.isTurn = isTurn;
   this.name = name;
 
-  const renderPlayer = () => {
+  const render  = () => {
     const playerDiv = counter === X
         ? document.querySelector("#player1-container")
         : document.querySelector("#player2-container");
@@ -34,7 +34,7 @@ const playerFactory = (name, isAI, counter, isTurn) => {
   const getIsAI = () => isAI;
 
   return {
-    renderPlayer,
+    render,
     switchTurn,
     getName,
     getIsAI,
@@ -46,7 +46,7 @@ const board = (() => {
 
   const getState = () => state;
 
-  const renderBoard = () => {
+  const render = () => {
     const gameContainer = document.querySelector("#game-container");
     gameContainer.innerHTML = "";
     for (let i = 0; i < 9; i++) {
@@ -71,7 +71,7 @@ const board = (() => {
 
   return {
     getState,
-    renderBoard,
+    render,
   };
 })();
 
@@ -90,7 +90,7 @@ const game = (() => {
     player2 = playerFactory(p2.name, p2.isAI, p2.counter, playerTurn === O);
     renderPlayers();
     if (mode !== PvP && playerTurn === O) {
-      board.renderBoard();
+      board.render();
       document.querySelectorAll("._-button").forEach(button => {
         button.disabled = true;
       });
@@ -99,17 +99,17 @@ const game = (() => {
         document.querySelectorAll("._-button").forEach(button => {
           button.disabled = false;
         });
-        board.renderBoard();
+        board.render();
       }, 1500);
     } else {
-      board.renderBoard();
+      board.render();
     }
   };
 
   const makeMove = (space) => {
     if (playerTurn === X) state[space] = X;
     else state[space] = O;
-    board.renderBoard();
+    board.render();
     return checkResult(space);
   }
 
@@ -119,7 +119,7 @@ const game = (() => {
       space = Math.floor(Math.random() * 9);
     }
     state[space] = O;
-    board.renderBoard();
+    board.render();
     return checkResult(space);
   }
 
@@ -161,8 +161,8 @@ const game = (() => {
   const setMode = m => mode = m;
 
   function renderPlayers() {
-    player1.renderPlayer();
-    player2.renderPlayer();
+    player1.render();
+    player2.render();
   }
 
   function switchTurns() {
@@ -194,7 +194,6 @@ document.querySelector("#game-container").addEventListener("click", (e) => {
     else {
       if (game.getMode() === PvAI) {
         document.querySelectorAll("._-button").forEach(button => {
-          console.log("found a button");
           button.disabled = true;
         });
         setTimeout(function() {
