@@ -1,5 +1,3 @@
-const cssVars = getComputedStyle(document.documentElement);
-
 const X = -1;
 const O = 1;
 const _ = 0;
@@ -10,16 +8,18 @@ const PvAIH = 2;
 
 const playerFactory = (name, isAI, counter, isTurn) => {
   this.isTurn = isTurn;
+  this.name = name;
 
   const renderPlayer = () => {
     const playerDiv = counter === X
         ? document.querySelector("#player1-container")
         : document.querySelector("#player2-container");
     if (isAI) {
-      playerDiv.querySelector("h2").innerHTML = "AI";
+      name = "AI";
     } else {
-      playerDiv.querySelector("h2").innerHTML = name === "" ? "Player" : name;
+      name = name === "" ? "Player" : name;
     }
+    playerDiv.querySelector("h2").textContent = name;
     if (!isTurn) {
       playerDiv.classList.add("not-turn");
     }
@@ -30,7 +30,15 @@ const playerFactory = (name, isAI, counter, isTurn) => {
 
   const switchTurn = () => {isTurn = !isTurn};
 
-  return {renderPlayer, switchTurn};
+  const getName = () => name;
+  const getIsAI = () => isAI;
+
+  return {
+    renderPlayer,
+    switchTurn,
+    getName,
+    getIsAI,
+  };
 }
 
 const board = (() => {
@@ -81,12 +89,36 @@ const game = (() => {
     player1 = playerFactory(p1.name, p1.isAI, p1.counter, playerTurn === X);
     player2 = playerFactory(p2.name, p2.isAI, p2.counter, playerTurn === O);
     renderPlayers();
-    board.renderBoard();
+    if (mode !== PvP && playerTurn === O) {
+      board.renderBoard();
+      document.querySelectorAll("._-button").forEach(button => {
+        button.disabled = true;
+      });
+      setTimeout(function() {
+        results = game.makeAIMove();
+        document.querySelectorAll("._-button").forEach(button => {
+          button.disabled = false;
+        });
+        board.renderBoard();
+      }, 1500);
+    } else {
+      board.renderBoard();
+    }
   };
 
   const makeMove = (space) => {
     if (playerTurn === X) state[space] = X;
     else state[space] = O;
+    board.renderBoard();
+    return checkResult(space);
+  }
+
+  const makeAIMove = () => {
+    let space = Math.floor(Math.random() * 9);
+    while (state[space] !== _) {
+      space = Math.floor(Math.random() * 9);
+    }
+    state[space] = O;
     board.renderBoard();
     return checkResult(space);
   }
@@ -102,7 +134,7 @@ const game = (() => {
 
     if (rowSum === 3 || colSum === 3 || diagSum === 3 || antiDiagSum === 3) {
       return {
-        winner: X,
+        winner: player2.getName(),
         row: [rowSum === 3, row],
         col: [colSum === 3, col],
         diag: diagSum === 3,
@@ -110,7 +142,7 @@ const game = (() => {
       }
     } else if (rowSum === -3 || colSum === -3 || diagSum === -3 || antiDiagSum === -3) {
       return {
-        winner: O,
+        winner: player1.getName(),
         row: [rowSum === -3, row],
         col: [colSum === -3, col],
         diag: diagSum === -3,
@@ -125,6 +157,9 @@ const game = (() => {
     }
   }
 
+  const getMode = () => mode;
+  const setMode = m => mode = m;
+
   function renderPlayers() {
     player1.renderPlayer();
     player2.renderPlayer();
@@ -138,15 +173,45 @@ const game = (() => {
   return {
     start,
     makeMove,
-    mode,
+    getMode,
+    setMode,
     player1,
+    makeAIMove,
   };
 })();
 
 document.querySelector("#game-container").addEventListener("click", (e) => {
   if (e.target.hasAttribute("value")) {
-    if (game.makeMove(e.target.value).winner !== undefined) {
-      document.querySelector("#overlay").style.display = "block";
+    let results = game.makeMove(e.target.value);
+    if (results.winner === _) {
+      document.querySelector("#overlay").style.display = "flex";
+      document.querySelector("#overlay h1").textContent = `It's a tie.`;
+    }
+    else if (results.winner !== undefined) {
+      document.querySelector("#overlay").style.display = "flex";
+      document.querySelector("#overlay h1").textContent = `${results.winner} won!`;
+    }
+    else {
+      if (game.getMode() === PvAI) {
+        document.querySelectorAll("._-button").forEach(button => {
+          console.log("found a button");
+          button.disabled = true;
+        });
+        setTimeout(function() {
+          results = game.makeAIMove();
+          if (results.winner === 0) {
+            document.querySelector("#overlay").style.display = "flex";
+            document.querySelector("#overlay h1").textContent = `It's a tie.`;
+          }
+          else if (results.winner !== undefined) {
+            document.querySelector("#overlay").style.display = "flex";
+            document.querySelector("#overlay h1").textContent = `${results.winner} won!`;
+          }
+          document.querySelectorAll("._-button").forEach(button => {
+            button.disabled = false;
+          });
+        }, 1500);
+      }
     }
   }
 });
@@ -158,14 +223,12 @@ document.querySelector("#mode-container").addEventListener("click", (e) => {
     });
     document.querySelector("#start-container button").disabled = false;
     e.target.classList.add("btn-clicked");
-    game.mode = e.target.value;
+    game.setMode(parseInt(e.target.value));
     if (e.target.value != PvP) {
       document.querySelector("#player2-name").disabled = true;
     } else {
       document.querySelector("#player2-name").disabled = false;
     }
-  } else {
-    document.querySelector("#start-container button").disabled = true;
   }
 });
 
@@ -173,8 +236,8 @@ document.querySelector("#start-container").addEventListener("click", (e) => {
   if (e.target.classList.contains("btn")) {
     document.querySelector("#entry").style.display = "none";
     game.start(
-      {name: document.querySelector("#player1-name").value, isAI:false, counter:X},
-      {name: document.querySelector("#player1-name").value, isAI: game.mode !== PvP, counter:O}
+      {name: document.querySelector("#player1-name").value, isAI: false, counter:X},
+      {name: document.querySelector("#player2-name").value, isAI: game.getMode() !== PvP, counter:O}
     );
   }
 });
