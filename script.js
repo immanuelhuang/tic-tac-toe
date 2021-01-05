@@ -1,5 +1,7 @@
 const X = -1;
+const player1Turn = -1;
 const O = 1;
+const player2Turn = 1;
 const _ = 0;
 
 const PvP = 0;
@@ -29,7 +31,6 @@ const playerFactory = (name, isAI, counter, isTurn) => {
   }
 
   const switchTurn = () => {isTurn = !isTurn};
-
   const getName = () => name;
   const getIsAI = () => isAI;
 
@@ -41,12 +42,13 @@ const playerFactory = (name, isAI, counter, isTurn) => {
   };
 }
 
-const board = (() => {
-  const state = [ _ , _ , _ , _ , _ , _ , _ , _ , _ ];
+const game = (() => {
+  const board = [ _ , _ , _ , _ , _ , _ , _ , _ , _ ];
+  let playerTurn;
+  let player1, player2;
+  let mode;
 
-  const getState = () => state;
-
-  const render = () => {
+  const renderBoard = () => {
     const gameContainer = document.querySelector("#game-container");
     gameContainer.innerHTML = "";
     for (let i = 0; i < 9; i++) {
@@ -56,10 +58,10 @@ const board = (() => {
       if (6 <= i && i <= 8) button.classList.add("bottom-button");
       if (i % 3 === 0) button.classList.add("left-button");
       if (i % 3 === 2) button.classList.add("right-button");
-      if (state[i] === X) {
+      if (board[i] === X) {
         button.classList.add("X-button");
         button.disabled = true;
-      } else if (state[i] === O) {
+      } else if (board[i] === O) {
         button.classList.add("O-button");
         button.disabled = true;
       } else {
@@ -69,100 +71,142 @@ const board = (() => {
     }
   }
 
-  return {
-    getState,
-    render,
-  };
-})();
-
-const game = (() => {
-  const state = board.getState();
-
-  let playerTurn = _;
-  let player1, player2;
-
-  let mode;
-
   const start = (p1, p2) => {
-    for (let i = 0; i < state.length; i++) state[i] = _;
+    for (let i = 0; i < board.length; i++) board[i] = _;
     playerTurn = Math.floor(Math.random() * 2) === 0 ? X : O;
     player1 = playerFactory(p1.name, p1.isAI, p1.counter, playerTurn === X);
     player2 = playerFactory(p2.name, p2.isAI, p2.counter, playerTurn === O);
-    renderPlayers();
-    if (mode !== PvP && playerTurn === O) {
-      board.render();
+    if (mode === PvP || playerTurn === X) {
+      renderPlayers();
+    }
+    else if (playerTurn === O) {
+      renderPlayers();
       document.querySelectorAll("._-button").forEach(button => {
         button.disabled = true;
       });
       setTimeout(function() {
-        results = game.makeAIMove();
+        game.makeMove();
         document.querySelectorAll("._-button").forEach(button => {
           button.disabled = false;
         });
-        board.render();
-      }, 1500);
-    } else {
-      board.render();
+        renderPlayers();
+      }, 500);
     }
   };
 
-  const makeMove = (space) => {
-    if (playerTurn === X) state[space] = X;
-    else state[space] = O;
-    board.render();
-    return checkResult(space);
-  }
-
-  const makeAIMove = () => {
-    let space = Math.floor(Math.random() * 9);
-    while (state[space] !== _) {
-      space = Math.floor(Math.random() * 9);
+  const makeMove = (space = -1) => {
+    if (space !== -1) {
+      if (playerTurn === X) board[space] = X;
+      else board[space] = O;
     }
-    state[space] = O;
-    board.render();
-    return checkResult(space);
-  }
-
-  function checkResult(space) {
-    const row = Math.floor(space / 3) * 3;
-    const col = space % 3;
-
-    let rowSum = state[row] + state[row + 1] + state[row + 2];
-    let colSum = state[col] + state[col + 3] + state[col + 6];
-    let diagSum = state[0] + state[4] + state[8];
-    let antiDiagSum = state[2] + state[4] + state[6];
-
-    if (rowSum === 3 || colSum === 3 || diagSum === 3 || antiDiagSum === 3) {
-      return {
-        winner: player2.getName(),
-        row: [rowSum === 3, row],
-        col: [colSum === 3, col],
-        diag: diagSum === 3,
-        antiDiag: antiDiagSum === 3,
+    else if (mode === PvAI || (mode === PvAIH && !board.includes(X) && !board.includes(O))) {
+      space = Math.floor(Math.random() * 9);
+      while (board[space] !== _) {
+        space = Math.floor(Math.random() * 9);
       }
-    } else if (rowSum === -3 || colSum === -3 || diagSum === -3 || antiDiagSum === -3) {
-      return {
-        winner: player1.getName(),
-        row: [rowSum === -3, row],
-        col: [colSum === -3, col],
-        diag: diagSum === -3,
-        antiDiag: antiDiagSum === -3,
-      }
-    } else {
-      if (!state.includes(_)) return {winner: _};
-      playerTurn = playerTurn === X ? O : X;
+      board[space] = O;
+    }
+    else {
+      board[minimax([...board], true).index] = O;
+    }
+    renderBoard();
+    const res = checkResult();
+    if(res.winner === undefined) {
+      playerTurn = playerTurn === player1Turn ? player2Turn : player1Turn;
       switchTurns();
       renderPlayers();
+    }
+    return res;
+  }
+
+  function max(arr) {
+    let par = []
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] !== undefined) {
+        par.push(arr[i]);
+      }
+    }
+    return Math.max(...par);
+  }
+  function min(arr) {
+    let par = []
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] !== undefined) {
+        par.push(arr[i]);
+      }
+    }
+    return Math.min(...par);
+  }
+
+  function minimax(board, isAITurn) {
+    //console.log(isAITurn ? player2Turn : player1Turn);
+    if (checkResult(board, isAITurn ? player2Turn : player1Turn).winner === "tie") {
+      //console.log("TIE");
+      return {value: 0};
+    }
+    else if (checkResult(board, isAITurn ? player2Turn : player1Turn).winner === player1) {
+      //console.log("PLAYER WINS");
+      return {value: 10};
+    }
+    else if (checkResult(board, isAITurn ? player2Turn : player1Turn).winner === player2) {
+      //console.log("COMPUTER WINS");
+      return {value: -10};
+    }
+
+    const scores = [undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined];
+    for (let i = 0; i < 9; i++) {
+      if (board[i] === _) {
+        board[i] = isAITurn ? O : X;
+        scores[i] = minimax([...board], !isAITurn).value;
+        board[i] = _;
+      }
+    }
+    //console.log(board);
+    //console.table({
+        //value: isaiturn ? min(scores) : max(scores),
+        //index: isAITurn ? scores.indexOf(min(scores)) : scores.indexOf(max(scores)),
+    //});
+
+    return {
+      value: isAITurn ? max(scores) : min(scores),
+      index: isAITurn ? scores.indexOf(max(scores)) : scores.indexOf(min(scores)),
+    }
+  }
+
+  function checkResult(board = game.getBoard(), playerTurn = game.getPlayerTurn()) {
+    let winningRow, winningCol, winningDiag, winningAntiDiag;
+    for (let i = 0; i < 3; i++) {
+      if (Math.abs(board[i * 3] + board[i * 3 + 1] + board[i * 3 + 2]) === 3) winningRow = i;
+      if (Math.abs(board[i] + board[i + 3] + board[i + 6]) === 3) winningCol = i;
+    }
+    winningDiag = Math.abs(board[0] + board[4] + board[8]) === 3;
+    winningAntiDiag = Math.abs(board[2] + board[4] + board[6]) === 3;
+    if (winningRow !== undefined || winningCol !== undefined || winningDiag || winningAntiDiag) {
+      return {
+        winner:playerTurn === player1Turn ? player1 : player2,
+        winningRow,
+        winningCol,
+        winningDiag,
+        winningAntiDiag,
+      }
+    }
+    else {
+      if (!board.includes(_)) {
+        return {winner: "tie"};
+      }
       return {winner: undefined};
     }
   }
 
   const getMode = () => mode;
   const setMode = m => mode = m;
+  const getBoard = () => board;
+  const getPlayerTurn = () => playerTurn;
 
   function renderPlayers() {
     player1.render();
     player2.render();
+    renderBoard();
   }
 
   function switchTurns() {
@@ -176,44 +220,40 @@ const game = (() => {
     getMode,
     setMode,
     player1,
-    makeAIMove,
+    getBoard,
+    getPlayerTurn,
   };
 })();
 
 document.querySelector("#game-container").addEventListener("click", (e) => {
   if (e.target.hasAttribute("value")) {
     let results = game.makeMove(e.target.value);
-    if (results.winner === _) {
-      document.querySelector("#overlay").style.display = "flex";
-      document.querySelector("#overlay h1").textContent = `It's a tie.`;
-    }
-    else if (results.winner !== undefined) {
-      document.querySelector("#overlay").style.display = "flex";
-      document.querySelector("#overlay h1").textContent = `${results.winner} won!`;
-    }
-    else {
-      if (game.getMode() === PvAI) {
+    resultDisplay(results);
+    if (game.getMode() !== PvP && results.winner === undefined) {
+      document.querySelectorAll("._-button").forEach(button => {
+        button.disabled = true;
+      });
+      setTimeout(function() {
+        results = game.makeMove();
+        resultDisplay(results);
         document.querySelectorAll("._-button").forEach(button => {
-          button.disabled = true;
+          button.disabled = false;
         });
-        setTimeout(function() {
-          results = game.makeAIMove();
-          if (results.winner === 0) {
-            document.querySelector("#overlay").style.display = "flex";
-            document.querySelector("#overlay h1").textContent = `It's a tie.`;
-          }
-          else if (results.winner !== undefined) {
-            document.querySelector("#overlay").style.display = "flex";
-            document.querySelector("#overlay h1").textContent = `${results.winner} won!`;
-          }
-          document.querySelectorAll("._-button").forEach(button => {
-            button.disabled = false;
-          });
-        }, 1500);
-      }
+      }, 500);
     }
   }
 });
+
+function resultDisplay(results) {
+  if (results.winner === "tie") {
+    document.querySelector("#overlay").style.display = "flex";
+    document.querySelector("#overlay h1").textContent = `It's a tie.`;
+  }
+  else if (results.winner !== undefined) {
+    document.querySelector("#overlay").style.display = "flex";
+    document.querySelector("#overlay h1").textContent = `${results.winner.getName()} won!`;
+  }
+}
 
 document.querySelector("#mode-container").addEventListener("click", (e) => {
   if (e.target.classList.contains("btn")) {
